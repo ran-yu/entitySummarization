@@ -1019,7 +1019,7 @@ public class RetrievalModel {
      * to fill 5 result pages. If the user wants to page beyond this limit, then the query
      * is executed another time and all hits are collected.
      */
-    public void bm25Search(IndexSearcher searcher, Query query, int top_k, String out_file, String qid, String type) throws IOException {
+    public void bm25Search(IndexSearcher searcher, Query query, int top_k, String out_file, String qid, String type) throws IOException, ParseException {
         // Collect enough docs to show 5 pages
 
         Integer fact_id = 1;
@@ -1046,21 +1046,54 @@ public class RetrievalModel {
             if(doc.getField("http://www.w3.org/1999/02/22-rdf-syntax-ns#type") == null){
                 continue;
             }
-            if(!doc.get("http://www.w3.org/1999/02/22-rdf-syntax-ns#type").contains(type)){
-                continue;
-            }
-//            if(!doc.get("<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>").contains(type)){
-//                continue;
-//            }
+            String [] types = doc.getValues("http://www.w3.org/1999/02/22-rdf-syntax-ns#type");
+
             doc_added.add(resource_uri);
             double bm25_score = hits[i].score;
 
 
             for(IndexableField field:fields){
-                if(field.name()=="page_url")//||field.name()=="resource_uri")
+                if(field.name().equals("page_url") ||field.name().equals("resource_uri"))
                     continue;
                 String field_content=field.stringValue().replaceAll("\n", "").replaceAll("\r", "").replaceAll("\\s+", " ").replaceAll("\t", " ").trim();
                 //if(field_content == null) continue;
+
+                //resolve object property
+                if(field_content.contains("node")) {
+                    //form query, query field "resource_uri"
+                    Analyzer analyzer = new StandardAnalyzer();
+                    QueryParser parser = new QueryParser("resource_uri", analyzer);
+                    Query uri_query = parser.parse("\"" + field_content + "\"");
+
+                    //query
+                    TopDocs uri_results = searcher.search(uri_query, 1000);
+//                    System.out.println(uri_results.totalHits + " total matching documents of uri: "+field_content);
+
+                    //parse results
+                    ScoreDoc[] uri_hits = uri_results.scoreDocs;
+
+                    String name = null;
+                    for (int k = 0; k < uri_hits.length; k++) {
+                        Document uri_doc = searcher.doc(uri_hits[k].doc);
+
+//                        System.out.println(uri_doc.toString());
+
+                        if (!uri_doc.get("resource_uri").equals(field_content)) continue;
+
+                        List<IndexableField> uri_fields = uri_doc.getFields();
+                        for (IndexableField uri_field : uri_fields) {
+                            if (uri_field.name().endsWith("name")) {
+                                name = uri_field.stringValue();
+                            }
+                        }
+
+                        if (name != null) break;
+                    }
+                    if (name != null) {
+                        field_content = name;
+                        // System.out.println("name of "+field.name()+":"+field.stringValue()+ "***is***" + name);
+                    }
+                }
                 sb.append(fact_id).append("\t").append(resource_uri).append("\t").append(field.name()).
                                 append("\t").append(field_content).append("\t").append(bm25_score).append("\t").append(page_url).append("\n");
                 //append(page_url).append("\t").

@@ -1,7 +1,8 @@
 <component name="libraryTable">
   <library name="ajt-2.11">
     <CLASSES>
-      <root url="jar://$PROJECT_DIR$/../entityAbstractor/exjars/ajt-2.11.jar!/" />
+      <root url="jar://$PROJECT_DIR$/src/main/webapp/lib/ajt-2.11.jar!/" />
+      <root url="jar://$PROJECT_DIR$/src/main/webapp/lib/javaml-0.1.7.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />
